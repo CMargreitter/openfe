@@ -1239,6 +1239,9 @@ def test_lambda_schedule_default():
     lambdas = openmm_rfe._rfe_utils.lambdaprotocol.LambdaProtocol(functions="default")
     assert len(lambdas.lambda_schedule) == 10
 
+def test_lambda_schedule_preset():
+    lambdas = openmm_rfe._rfe_utils.lambdaprotocol.LambdaProtocol(functions="default", lambda_windows=10,lambda_schedule=[0.0, 0.5, 1.0])
+    assert lambdas.lambda_schedule == [0.0, 0.5, 1.0]
 
 @pytest.mark.parametrize("windows", [11, 6, 9000])
 def test_lambda_schedule(windows):

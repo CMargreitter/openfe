@@ -47,6 +47,9 @@ class LambdaSettings(SettingsBaseModel):
     lambda_windows: int = 11
     """Number of lambda windows to calculate. Default 11."""
 
+    lambda_schedule: list[float] | None = None
+    """List of lambda values to use for alchemical mutation. If set, lambda_windows is ignored. Default None."""
+
 
 class AlchemicalSettings(SettingsBaseModel):
     model_config = ConfigDict(extra="ignore", arbitrary_types_allowed=True)

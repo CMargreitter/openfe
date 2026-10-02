@@ -608,3 +608,14 @@ def test_n_replicas_not_n_windows(
             mapping=benzene_to_toluene_mapping,
             extends=None,
         )
+    
+    # Check that the lambda_schedule parameter, if set, takes precedence over lambda_windows
+    vac_settings.simulation_settings.n_replicas = 11
+    #vac_settings.lambda_settings.lambda_schedule = [0.0, 0.5, 1.0]
+    p = openmm_rfe.RelativeHybridTopologyProtocol(settings=vac_settings)
+    p.validate(
+        stateA=benzene_vacuum_system,
+        stateB=toluene_vacuum_system,
+        mapping=benzene_to_toluene_mapping,
+        extends=None,
+    )
