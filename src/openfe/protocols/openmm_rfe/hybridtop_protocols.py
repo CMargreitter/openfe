@@ -192,13 +192,14 @@ class RelativeHybridTopologyProtocol(gufe.Protocol):
                 "Charge changing transformation between ligands "
                 f"{mapping.componentA.name} and {mapping.componentB.name}. "
                 "A more expensive protocol with 22 lambda windows, sampled "
-                "for 20 ns each, will be used here."
+                "for 20 ns each, will be used here. Any set lambda_schedule will be ignored."
             )
             logger.info(info)
             protocol_settings.alchemical_settings.explicit_charge_correction = True
             protocol_settings.simulation_settings.production_length = 20 * offunit.nanosecond
             protocol_settings.simulation_settings.n_replicas = 22
             protocol_settings.lambda_settings.lambda_windows = 22
+            protocol_settings.lambda_settings.lambda_schedule = None
 
         # adapt the solvation padding based on the system components
         if stateA.contains(ProteinComponent):
@@ -721,15 +722,16 @@ class RelativeHybridTopologyProtocol(gufe.Protocol):
 
         # Validate alchemical settings
         # PR #125 temporarily pin lambda schedule spacing to n_replicas
+        lambda_windows = self.settings.lambda_settings.lambda_windows if self.settings.lambda_settings.lambda_schedule is None else len(self.settings.lambda_settings.lambda_schedule)
         if (
             self.settings.simulation_settings.n_replicas
-            != self.settings.lambda_settings.lambda_windows
+            != lambda_windows
         ):
             errmsg = (
                 "Number of replicas in ``simulation_settings``: "
                 f"{self.settings.simulation_settings.n_replicas} must equal "
                 "the number of lambda windows in lambda_settings: "
-                f"{self.settings.lambda_settings.lambda_windows}."
+                f"{lambda_windows}."
             )
             raise ValueError(errmsg)
 

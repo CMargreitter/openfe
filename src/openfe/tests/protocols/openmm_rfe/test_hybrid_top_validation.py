@@ -608,3 +608,25 @@ def test_n_replicas_not_n_windows(
             mapping=benzene_to_toluene_mapping,
             extends=None,
         )
+
+def test_lambda_schedule_preset(
+    benzene_vacuum_system,
+    toluene_vacuum_system,
+    benzene_to_toluene_mapping,
+    vac_settings,
+):
+    # Check that the lambda_schedule parameter, if set, takes precedence over lambda_windows
+    vac_settings.simulation_settings.n_replicas = 11
+    vac_settings.lambda_settings.lambda_schedule = [0.0, 0.5, 1.0]
+
+    p = openmm_rfe.RelativeHybridTopologyProtocol(settings=vac_settings)
+
+    errmsg = "Number of replicas in ``simulation_settings``:"
+
+    with pytest.raises(ValueError, match=errmsg):
+        p.validate(
+            stateA=benzene_vacuum_system,
+            stateB=toluene_vacuum_system,
+            mapping=benzene_to_toluene_mapping,
+            extends=None,
+        )

@@ -1330,12 +1330,17 @@ class HybridTopologyMultiStateSimulationUnit(gufe.ProtocolUnit, HybridTopologyUn
             output_settings=settings["output_settings"], shared_path=self.shared_basepath
         )
 
-        # Get the lambda schedule
-        # TODO - this should be better exposed to users
-        lambdas = _rfe_utils.lambdaprotocol.LambdaProtocol(
-            functions=settings["lambda_settings"].lambda_functions,
-            windows=settings["lambda_settings"].lambda_windows,
-        )
+        # Get the lambda schedule; pre-set lambda schedules take precedence and are evaluated as well
+        if settings["lambda_settings"].lambda_schedule is None:
+            lambdas = _rfe_utils.lambdaprotocol.LambdaProtocol(
+                functions=settings["lambda_settings"].lambda_functions,
+                windows=settings["lambda_settings"].lambda_windows
+            )
+        else:
+            lambdas = _rfe_utils.lambdaprotocol.LambdaProtocol(
+                functions=settings["lambda_settings"].lambda_functions,
+                lambda_schedule=settings["lambda_settings"].lambda_schedule
+            )
 
         # Get the compute platform
         restrict_cpu = settings["forcefield_settings"].nonbonded_method.lower() == "nocutoff"
