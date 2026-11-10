@@ -1,163 +1,36 @@
 .. _userguide_task_based_execution:
 
+.. module:: openfe
+    :noindex:
+
 Task-based Execution
 ====================
 
-In contrast to :ref:`quickrun execution <userguide_quickrun>`, task-based execution does not require that you explicitly define the Transformation to be executed.
+.. warning:: Task-based execution is an experimental feature and subject to change in future releases of openfe.
 
-This means that you can execute an entire ``AlchemicalNetwork``'s campaign just by calling the ``openfe run-task`` command iteratively until all tasks are complete!
+When using :ref:`quickrun execution <userguide_quickrun>`, you orchestrate the campaign by choosing which ``Transformation`` to run and when to run it.
 
-.. include that ``task`` == ProtocolUnit, or is that confusing to non-dev users?
+With task-based execution, **openfe** handles that orchestration for you.
+You provide an entire :class:`AlchemicalNetwork`, **openfe** breaks it into dependent tasks, and one or
+more :class:`Worker`\s claim those tasks as soon as they are ready to run.
 
-See below for details on how to run an openfe campaign using task-based execution using either the CLI or the Python API.
+A **task** is a single :class:`ProtocolUnit`, for example the setup, simulation, or
+analysis step of one repeat of one :class:`Transformation`.
 
-Task-based Execution with the CLI
----------------------------------
+A task-based campaign uses:
 
-Setting up a Campaign
-~~~~~~~~~~~~~~~~~~~~~
+- A **Warehouse**, usually a :class:`storage.FileSystemWarehouse`: a directory with a strict structure that stores the campaign data needed for execution, including the inputs, tasks, and results.
+- A :class:`TaskStatusDB`: a SQLite database file that tracks tasks' statuses and dependencies.
+- One or more :class:`Worker`\s: The execution objects that claim available tasks, execute them, and write the results to the **Warehouse**. On the CLI they are invoked with ``openfe run-task``, which is equivalent to ``Worker.execute_unit()`` in the Python API.
 
-An ``AlchemicalNetwork`` will be our input for executing a campaign.
-Refer to the cookbook `Create an AlchemicalNetwork <../../cookbook/create_alchemical_network.nblink>`_ for guidance on getting to this step.
+.. figure:: img/execution.png
 
-If you are accustomed to using the existing ``openfe plan-rbfe-network`` or ``openfe plan-rhfe-network`` CLI commands to create, you can simply add the ``--networks-only`` argument to your existing call, and use the resulting ``alchemicalNetwork.json`` as a starting point.
+.. commented out until Protocols and the Execution Model Theory is updated
+.. See the :ref:`Protocols and the Execution Model Theory  <userguide_execution_theory>` guide for more details on ProtocolDAGs, ProtocolUnits, and ProtocolUnitResults.
 
-.. code:: bash
+This means that you can execute an entire ``AlchemicalNetwork``\'s campaign just by calling the ``openfe run-task`` command  or ``Worker.execute_unit()`` call iteratively to run each task until the entire campaign is complete, without needing to track specific ``Transformation`` JSON files.
 
-    > openfe plan-rbfe-network --networks-only
+For details on how to run an openfe campaign using task-based execution, see the following tutorials:
 
-
-Once you have an AlchemicalNetwork, use the following command to set up the task-based campaign.
-By default, the ``TaskDB`` and ``Warehouse`` will be created using the input file basename (here, ``tyk2``).
-
-.. TODO: The ``--name`` parameter lets us choose an identifier for the ``Warehouse`` and ``TaskDB`` file names.
-
-
-.. code:: bash
-
-    > openfe setup-task-campaign --alchemical-network tyk2.json
-
-
-You should see a ``Warehouse`` in the form of a directory and a ``TaskStatusDB`` file as output.
-
-.. code:: bash
-
-    > ls
-    warehouse_tyk2/    tasks_tyk2.db
-
-
-.. note::
-
-    If you're migrating from Transformation-based execution with quickrun, know that the ``Warehouse`` directory contains all the information that a directory of transformation.json files store, just in a different structure.
-
-
-Running the Campaign
-~~~~~~~~~~~~~~~~~~~~
-
-To execute the campaign all we need is the ``Warehouse`` and a ``TaskStatusDB`` which handle storage and orchestration, respectively.
-
-At any time, you can query the execution status of the campaign using ``openfe status``.
-All task status information is stored in the ``TaskStatusDB``:
-
-.. code:: bash
-
-    > openfe status --task-db tasks_ty2k.db
-    ┌─────────────────────────────────┬───────────┬───────────────┬───────┬───────────┐
-    │ taskid                          │ status    │ last_modified │ tries │ max_tries │
-    ├─────────────────────────────────┼───────────┼───────────────┼───────┼───────────┤
-    │ HybridTopologySetupUnit-025f3a… │ AVAILABLE │ NaT           │ 0     │ 1         │
-    │ HybridTopologySetupUnit-70535a… │ AVAILABLE │ NaT           │ 0     │ 1         │
-    │ HybridTopologySetupUnit-4eb000… │ AVAILABLE │ NaT           │ 0     │ 1         │
-    │ HybridTopologySetupUnit-016551… │ AVAILABLE │ NaT           │ 0     │ 1         │
-    │ HybridTopologyMultiStateSimula… │ BLOCKED   │ NaT           │ 0     │ 1         │
-    │ HybridTopologyMultiStateSimula… │ BLOCKED   │ NaT           │ 0     │ 1         │
-    ...
-
-
-**Tip**: you can use the ``--summary`` flag to show a summary table of the number of tasks with each status:
-
-.. code:: bash
-
-    > openfe status --task-db tasks_ty2k.db
-    ┏━━━━━━━━━━━━━━━━━━┳━━━━━━━━━┓
-    ┃ status           ┃ n_tasks ┃
-    ┡━━━━━━━━━━━━━━━━━━╇━━━━━━━━━┩
-    │ BLOCKED          │       1 │
-    │ AVAILABLE        │       0 │
-    │ IN_PROGRESS      │       0 │
-    │ COMPLETED        │      10 │
-    │ TOO_MANY_RETRIES │       1 │
-    │ ERROR            │       0 │
-    └──────────────────┴─────────┘
-
-.. TODO: explain task dag? maybe save that for developer docs?
-
-To execute a single ``task`` (where here a ``task`` is one ``ProtocolUnit``), you can simply run:
-
-.. code:: bash
-
-    > openfe run-task --warehouse warehouse_tyk2/ --task-db tasks_tyk2.db
-
-This finds next available ``task`` in the ``TaskStatusDB``, retrieves the necessary data from the ``Warehouse`` to execute the task, then executes the task.
-
-You'll now see that one task has been completed, and a new task has been unblocked:
-
-.. code:: bash
-
-    > openfe status --task-db tasks_ty2k.db
-
-    ┌───────────────────────────┬───────────┬─────────────────────┬───────┬───────────┐
-    │ taskid                    │ status    │ last_modified       │ tries │ max_tries │
-    ├───────────────────────────┼───────────┼─────────────────────┼───────┼───────────┤
-    │ HybridTopologySetupUnit-… │ COMPLETED │ 2026-09-09 18:02:13 │ 1     │ 1         │
-    │ HybridTopologySetupUnit-… │ AVAILABLE │ NaT                 │ 0     │ 1         │
-    │ HybridTopologySetupUnit-… │ AVAILABLE │ NaT                 │ 0     │ 1         │
-    │ HybridTopologySetupUnit-… │ AVAILABLE │ NaT                 │ 0     │ 1         │
-    │ HybridTopologyMultiState… │ AVAILABLE │ 2026-09-09 18:02:13 │ 0     │ 1         │
-    │ HybridTopologyMultiState… │ BLOCKED   │ NaT                 │ 0     │ 1         │
-    ...
-
-However, to run an entire campaign you would have to run this single command _many_ times.
-
-In practice, you will likely be submitting many workers simultaneously using SLURM or similar.
-You can call this command in a loop, so that after a ``task`` is completed, the ``Worker`` automatically picks up a new ``task``, continuing to run tasks in serial until the walltime runs out.
-
-.. code:: bash
-   :caption: run_tasks.sh
-
-    #!/bin/bash
-
-    #SBATCH --job-name="openfe job"
-    #SBATCH --mem-per-cpu=2G
-
-    # activate an appropriate conda environment, or any "module load" commands required
-    conda activate openfe_env
-
-    # continue submitting run-task in serial until the wall time is hit
-    # you may submit this *script* multiple times to have workers execute tasks in parallel
-    while true; do
-        openfe run-task --warehouse my_campaign/ --task-db my_campaign.db --scratch workdir/
-    done
-
-
-To run multiple workers in parallel, submit ``run_tasks.sh`` multiple times as separate jobs.
-
-
-Gathering Results
------------------
-
-In addition to the input data, the ``Warehouse`` directory contains every ``ProtocolUnitResult`` created during execution.
-
-Because task-based execution is currently under development, there is not yet a direct command to output the results.
-To enable complete workflows in the meantime, we provide the ``to-legacy-json`` CLI command that takes in a Warehouse directory and outputs the results in a format identical to the format used by ``openfe quickrun``.
-
-This enables use of ``openfe gather`` (and ``openfe gather-septop``, ``openfe gather-abfe``).
-
-.. code:: bash
-
-    > openfe to-legacy-json warehouse_tyk2/ -o tyk2_result_jsons
-
-
-The ``results`` directory may now be used as input to ``openfe gather``.
-
-
+- :ref:`CLI task-based execution tutorial <task_based_execution_cli>`
+- :ref:`Python API task-based execution tutorial <tutorials/task_based_execution_python_api.nblink>`.

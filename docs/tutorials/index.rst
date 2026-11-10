@@ -32,6 +32,12 @@ Molecular Dynamics (MD)
 
 - :any:`MD protocol <md_tutorial>`: A walk-through of running a conventional (non-alchemical) MD simulation of benzene bound to T4-lysozyme L99A.
 
+
+Execution
+---------
+- :ref:`Task-based Execution with the CLI <task_based_execution_cli>`
+- :any:`Task-based Execution with the Python API <task_based_execution_python_api>`
+
 Post-Simulation Analysis
 ------------------------
 
@@ -40,7 +46,7 @@ Post-Simulation Analysis
 Generating Partial Charges
 --------------------------
 
-.. todo: this should be in cookbook
+.. todo: this should be in how_to_guides
 
 -  :ref:`Generating Partial Charges CLI tutorial <charge_molecules_cli_tutorial>`: how to use the CLI to assign and store partial charges for mall molecules which can be used throughout the OpenFE ecosystem.
 
@@ -59,4 +65,6 @@ Generating Partial Charges
     septop_analysis_tutorial
     md_tutorial
     plotting_with_cinnabar
+    task_based_execution_cli
+    task_based_execution_python_api
     charge_molecules_cli_tutorial
